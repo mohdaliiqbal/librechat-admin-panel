@@ -378,6 +378,52 @@ export const openidLoginFn = createServerFn({ method: 'GET' }).handler(async () 
   }
 });
 
+export const googleCheckOptions = queryOptions({
+  queryKey: ['googleCheck'],
+  queryFn: () => checkGoogleFn(),
+  staleTime: 60_000,
+});
+
+export const checkGoogleFn = createServerFn({ method: 'GET' }).handler(async () => {
+  if (process.env.ADMIN_SSO_ENABLED === 'false') {
+    return { available: false };
+  }
+  // No dedicated /oauth/google/check endpoint — availability comes from the shared
+  // startup config (googleLoginEnabled = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET set).
+  const url = `${getServerApiUrl()}/api/config`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn('[checkGoogleFn] /api/config failed:', response.status);
+      return { available: false };
+    }
+    const json = (await response.json()) as { googleLoginEnabled?: boolean };
+    return { available: json.googleLoginEnabled === true };
+  } catch (error) {
+    console.warn('[checkGoogleFn] /api/config request failed:', error);
+    return { available: false };
+  }
+});
+
+export const googleLoginFn = createServerFn({ method: 'GET' }).handler(async () => {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const authUrl = new URL(`${baseUrl}/api/admin/oauth/google`);
+
+    const codeVerifier = crypto.randomBytes(32).toString('hex');
+    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('hex');
+    authUrl.searchParams.set('code_challenge', codeChallenge);
+
+    const session = await useAppSession();
+    await session.update({ codeVerifier });
+
+    return { error: false, authUrl: authUrl.toString() };
+  } catch (error) {
+    console.error('Google login initiation error:', error);
+    return { error: true, message: 'Failed to initiate Google login' };
+  }
+});
+
 export const oauthExchangeFn = createServerFn({ method: 'POST' })
   .inputValidator(
     z.object({ code: z.string().regex(/^[a-f0-9]{64}$/, 'Invalid exchange code format') }),

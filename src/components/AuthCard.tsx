@@ -5,7 +5,14 @@ import { useRouter } from '@tanstack/react-router';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Alert, Title, Panel, Button, Separator, TextField, Container } from '@clickhouse/click-ui';
 import type * as t from '@/types';
-import { adminLoginFn, adminVerify2FAFn, openIdCheckOptions, openidLoginFn } from '@/server';
+import {
+  adminLoginFn,
+  adminVerify2FAFn,
+  openIdCheckOptions,
+  openidLoginFn,
+  googleCheckOptions,
+  googleLoginFn,
+} from '@/server';
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from './InputOTP';
 import { PasswordInput } from './PasswordInput';
 import { useLocalize } from '@/hooks';
@@ -36,6 +43,9 @@ export function AuthCard({
     enabled: ssoAvailableProp === undefined,
   });
   const ssoAvailable = ssoAvailableProp ?? openIdData?.available ?? false;
+
+  const { data: googleData } = useQuery(googleCheckOptions);
+  const googleAvailable = googleData?.available ?? false;
 
   const showAutoRedirect = autoRedirectSso && !autoRedirectFailed;
 
@@ -210,6 +220,25 @@ export function AuthCard({
     }
   };
 
+  const handleGoogleLogin = async () => {
+    if (ssoLoading) return;
+    setSsoLoading(true);
+    try {
+      const result = await googleLoginFn();
+      if (result.error) {
+        setGeneralError(result.message || localize('com_auth_login_failed'));
+        return;
+      }
+      if (result.authUrl) {
+        window.location.href = result.authUrl;
+      }
+    } catch {
+      setGeneralError(localize('com_auth_unable_connect'));
+    } finally {
+      setSsoLoading(false);
+    }
+  };
+
   if (showAutoRedirect) {
     return (
       <Panel
@@ -334,6 +363,22 @@ export function AuthCard({
                   }
                   type="secondary"
                   onClick={handleSsoLogin}
+                  disabled={ssoLoading}
+                />
+              </>
+            )}
+
+            {googleAvailable && (
+              <>
+                {!ssoAvailable && <Separator size="sm" />}
+                <Button
+                  label={
+                    ssoLoading
+                      ? localize('com_auth_sso_redirecting')
+                      : localize('com_auth_google_sign_in')
+                  }
+                  type="secondary"
+                  onClick={handleGoogleLogin}
                   disabled={ssoLoading}
                 />
               </>
