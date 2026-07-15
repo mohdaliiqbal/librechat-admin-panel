@@ -9,8 +9,11 @@ import { z } from 'zod';
 import { queryOptions } from '@tanstack/react-query';
 import { SystemRoles } from 'librechat-data-provider';
 import { createServerFn } from '@tanstack/react-start';
+import { SystemCapabilities } from '@librechat/data-schemas/capabilities';
 import type { AdminUserSearchResult } from '@librechat/data-schemas';
 import type { TUser } from 'librechat-data-provider';
+import type * as t from '@/types';
+import { requireCapability } from './capabilities';
 import { apiFetch, extractApiError } from './utils/api';
 
 // ── Server functions ─────────────────────────────────────────────────
@@ -64,4 +67,42 @@ export const searchUsersFn = createServerFn({ method: 'GET' })
     }
     const json = (await response.json()) as { users: AdminUserSearchResult[] };
     return { users: json.users ?? [] };
+  });
+
+// ── Token balance (live credits, not config policy) ──────────────────
+
+export const getUserBalanceFn = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }): Promise<t.UserBalance> => {
+    await requireCapability(SystemCapabilities.READ_USERS);
+    const response = await apiFetch(
+      `/api/admin/users/${encodeURIComponent(data.id)}/balance`,
+    );
+    if (!response.ok) {
+      await extractApiError(response, 'Failed to fetch user balance');
+    }
+    return (await response.json()) as t.UserBalance;
+  });
+
+export const updateUserBalanceFn = createServerFn({ method: 'POST' })
+  .inputValidator(
+    z.object({ id: z.string(), mode: z.enum(['set', 'add']), amount: z.number() }),
+  )
+  .handler(async ({ data }): Promise<{ userId: string; mode: string; tokenCredits: number }> => {
+    await requireCapability(SystemCapabilities.MANAGE_USERS);
+    const response = await apiFetch(
+      `/api/admin/users/${encodeURIComponent(data.id)}/balance`,
+      { method: 'POST', body: JSON.stringify({ mode: data.mode, amount: data.amount }) },
+    );
+    if (!response.ok) {
+      await extractApiError(response, 'Failed to update user balance');
+    }
+    return (await response.json()) as { userId: string; mode: string; tokenCredits: number };
+  });
+
+export const userBalanceQueryOptions = (userId: string) =>
+  queryOptions({
+    queryKey: ['userBalance', userId],
+    queryFn: () => getUserBalanceFn({ data: { id: userId } }),
+    staleTime: 30_000,
   });

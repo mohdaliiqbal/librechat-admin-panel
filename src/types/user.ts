@@ -18,6 +18,25 @@ export interface CreateUserDialogProps {
 
 export type RoleFilter = 'all' | 'admin' | 'user';
 
+/** A user's live token balance, as returned by GET /api/admin/users/:id/balance. */
+export interface UserBalance {
+  userId: string;
+  enabled: boolean;
+  tokenCredits: number;
+  autoRefillEnabled: boolean;
+  refillAmount: number | null;
+  refillIntervalValue: number | null;
+  refillIntervalUnit: string | null;
+  lastRefill: string | null;
+}
+
+export type BalanceMode = 'set' | 'add';
+
+export interface BalanceDialogProps {
+  user: TUser | null;
+  onClose: () => void;
+}
+
 export interface UserRowProps {
   user: TUser;
   roles: AssignmentRef[];
@@ -25,6 +44,7 @@ export interface UserRowProps {
   hasUserProfile: boolean;
   isLast: boolean;
   onViewDetails: () => void;
+  onManageCredits: () => void;
   onDelete: () => void;
   canManage: boolean;
 }

@@ -21,8 +21,8 @@ import {
 } from '@/components/shared';
 import { useAnnouncement, useCapabilities, useLocalize } from '@/hooks';
 import { cn, notifySuccess, notifyError } from '@/utils';
-import { CreateUserDialog } from './CreateUserDialog';
 import { UserDetailDialog } from './UserDetailDialog';
+import { BalanceDialog } from './BalanceDialog';
 import { ConfirmDialog } from '@/components/access';
 import { SystemCapabilities } from '@/constants';
 
@@ -42,9 +42,9 @@ export function UsersPage() {
   const canAssignConfigs = hasCapability(SystemCapabilities.ASSIGN_CONFIGS);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<t.RoleFilter>('all');
-  const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TUser | null>(null);
   const [detailUser, setDetailUser] = useState<TUser | null>(null);
+  const [balanceUser, setBalanceUser] = useState<TUser | null>(null);
   const { message: announcement, announce } = useAnnouncement();
 
   const { data: users = [], isLoading } = useQuery(usersQueryOptions);
@@ -138,23 +138,6 @@ export function UsersPage() {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            disabled={!canManage}
-            aria-disabled={!canManage || undefined}
-            title={
-              !canManage
-                ? localize('com_cap_no_permission', { cap: SystemCapabilities.MANAGE_USERS })
-                : undefined
-            }
-            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-(--cui-color-stroke-default) bg-transparent px-3 py-1.5 text-sm text-(--cui-color-text-default) transition-colors hover:bg-(--cui-color-background-hover) disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span aria-hidden="true">
-              <Icon name="plus" size="xs" />
-            </span>
-            {localize('com_users_add')}
-          </button>
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-(--cui-color-stroke-default)">
@@ -185,6 +168,7 @@ export function UsersPage() {
                   hasUserProfile={userProfileSet.has(user.id)}
                   isLast={i === filtered.length - 1}
                   onViewDetails={() => setDetailUser(user)}
+                  onManageCredits={() => setBalanceUser(user)}
                   onDelete={() => setDeleteTarget(user)}
                   canManage={canManage}
                 />
@@ -206,8 +190,6 @@ export function UsersPage() {
         </p>
       </section>
 
-      <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-
       <UserDetailDialog
         user={detailUser}
         onClose={() => setDetailUser(null)}
@@ -215,6 +197,8 @@ export function UsersPage() {
         canManageGroups={canManageGroups}
         canAssignConfigs={canAssignConfigs}
       />
+
+      <BalanceDialog user={balanceUser} onClose={() => setBalanceUser(null)} />
 
       <ConfirmDialog
         open={!!deleteTarget}
@@ -240,6 +224,7 @@ function UserRow({
   hasUserProfile,
   isLast,
   onViewDetails,
+  onManageCredits,
   onDelete,
   canManage,
 }: t.UserRowProps) {
@@ -249,6 +234,11 @@ function UserRow({
     { label: localize('com_users_view_details'), icon: 'user', onClick: onViewDetails },
     ...(canManage
       ? [
+          {
+            label: localize('com_users_manage_credits'),
+            icon: 'dollar',
+            onClick: onManageCredits,
+          } as t.KebabMenuItem,
           {
             label: localize('com_ui_delete'),
             icon: 'trash',
