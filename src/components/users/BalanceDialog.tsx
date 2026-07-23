@@ -6,6 +6,15 @@ import { FormDialog } from '@/components/shared';
 import { updateUserBalanceFn, userBalanceQueryOptions } from '@/server';
 import { useLocalize } from '@/hooks';
 
+/** tokenCredits are micro-dollars: 1 credit = 1e-6 USD, so USD = credits / 1e6. */
+const CREDITS_PER_USD = 1_000_000;
+const fmtUsd = (credits: number | undefined) =>
+  new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format((credits ?? 0) / CREDITS_PER_USD);
+
 export function BalanceDialog({ user, onClose }: t.BalanceDialogProps) {
   const localize = useLocalize();
   const queryClient = useQueryClient();
@@ -28,14 +37,15 @@ export function BalanceDialog({ user, onClose }: t.BalanceDialogProps) {
   };
 
   const mutation = useMutation({
-    mutationFn: (parsed: number) =>
-      updateUserBalanceFn({ data: { id: userId, mode, amount: parsed } }),
+    // amount arrives in USD; the balance API is in credits, so convert (× 1e6).
+    mutationFn: (dollars: number) =>
+      updateUserBalanceFn({ data: { id: userId, mode, amount: Math.round(dollars * CREDITS_PER_USD) } }),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['userBalance', userId] });
       notifySuccess(
         localize('com_toast_balance_updated', {
           name: user?.name ?? '',
-          credits: result.tokenCredits.toLocaleString(),
+          credits: fmtUsd(result.tokenCredits),
         }),
       );
       resetAndClose();
@@ -73,7 +83,7 @@ export function BalanceDialog({ user, onClose }: t.BalanceDialogProps) {
           {localize('com_users_balance_current')}
         </span>
         <span className="text-2xl font-semibold text-(--cui-color-text-default)">
-          {isLoading ? '…' : (balance?.tokenCredits ?? 0).toLocaleString()}
+          {isLoading ? '…' : fmtUsd(balance?.tokenCredits)}
         </span>
         {balance && !balance.enabled && (
           <span className="text-xs text-(--cui-color-text-warning)">
@@ -101,15 +111,19 @@ export function BalanceDialog({ user, onClose }: t.BalanceDialogProps) {
         <label htmlFor="balance-amount" className="text-sm font-medium text-(--cui-color-text-default)">
           {localize('com_users_balance_amount_label')}
         </label>
-        <input
-          id="balance-amount"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder={localize('com_users_balance_amount_placeholder')}
-          autoFocus
-          className="rounded-lg border border-(--cui-color-stroke-default) bg-(--cui-color-background-default) px-3 py-2 text-sm text-(--cui-color-text-default) placeholder:text-(--cui-color-text-disabled)"
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-(--cui-color-text-muted)">$</span>
+          <input
+            id="balance-amount"
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={localize('com_users_balance_amount_placeholder')}
+            autoFocus
+            className="flex-1 rounded-lg border border-(--cui-color-stroke-default) bg-(--cui-color-background-default) px-3 py-2 text-sm text-(--cui-color-text-default) placeholder:text-(--cui-color-text-disabled)"
+          />
+        </div>
         <span className="text-xs text-(--cui-color-text-muted)">
           {localize('com_users_balance_amount_hint')}
         </span>
