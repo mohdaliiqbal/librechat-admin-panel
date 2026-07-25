@@ -24,6 +24,12 @@ const navItems: t.NavItem[] = [
     capability: SystemCapabilities.READ_USERS,
   },
   {
+    labelKey: 'com_nav_usage',
+    path: '/usage',
+    icon: 'bar-chart',
+    capability: SystemCapabilities.READ_USERS,
+  },
+  {
     labelKey: 'com_nav_access',
     path: '/access',
     icon: 'user',
