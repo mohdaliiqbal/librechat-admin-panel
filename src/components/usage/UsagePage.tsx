@@ -17,6 +17,7 @@ import { usageSummaryQueryOptions } from '@/server';
 import { EmptyState, LoadingState, PermissionsUnavailable } from '@/components/shared';
 import { useLocalize } from '@/hooks';
 import { cn } from '@/utils';
+import { ActivityHeatmap } from './ActivityHeatmap';
 
 const RANGE_OPTIONS = [7, 30, 90] as const;
 type RangeDays = (typeof RANGE_OPTIONS)[number];
@@ -154,6 +155,20 @@ export function UsagePage() {
               value={fmtNum(data.totals.activeUsers)}
             />
           </section>
+
+          {/* activity heatmap */}
+          {data.activity && data.activity.length > 0 && (
+            <Panel title={localize('com_usage_token_activity')}>
+              {data.activityTotals && (
+                <p className="mb-3 text-xs text-(--cui-color-text-muted)">
+                  {fmtNum(data.activityTotals.lifetimeTokens)} {localize('com_usage_tokens').toLowerCase()} ·{' '}
+                  {localize('com_usage_peak_day')} {fmtNum(data.activityTotals.peakDayTokens)} ·{' '}
+                  {fmtNum(data.activityTotals.activeDays)} {localize('com_usage_active_days')}
+                </p>
+              )}
+              <ActivityHeatmap activity={data.activity} />
+            </Panel>
+          )}
 
           {/* charts */}
           <section className="grid gap-4 lg:grid-cols-3">

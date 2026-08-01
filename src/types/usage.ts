@@ -44,6 +44,21 @@ export interface ModelPricing {
   completionUsdPer1M: number;
 }
 
+/** One day of activity for the contribution heatmap. */
+export interface UsageActivityDay {
+  /** ISO date, YYYY-MM-DD. */
+  date: string;
+  tokens: number;
+  /** Dominant model (by tokens) that day. */
+  model: string;
+}
+
+export interface UsageActivityTotals {
+  lifetimeTokens: number;
+  peakDayTokens: number;
+  activeDays: number;
+}
+
 export interface UsageSummary {
   range: { from: string; to: string };
   currency: string;
@@ -52,6 +67,9 @@ export interface UsageSummary {
   byModel: UsageByModel[];
   timeseries: UsageTimePoint[];
   modelPricing: ModelPricing[];
+  /** Per-day activity over the last ~365 days (for the heatmap). */
+  activity?: UsageActivityDay[];
+  activityTotals?: UsageActivityTotals;
 }
 
 export interface UsageRange {
